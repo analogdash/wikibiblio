@@ -31,7 +31,7 @@ Article.find_each(batch_size: 1) do |a|
     a.populate_revs!
 end
 
-Revision.where(content: nil).find_each(batch_size: 10) do |a|
+Revision.where(content: nil).find_each(batch_size: 100) do |a|
     t1 = Time.now
     a.scrape_content!
     print "\n" + (Time.now - t1).to_s + "\n"
