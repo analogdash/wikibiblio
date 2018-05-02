@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20180406155808) do
+ActiveRecord::Schema.define(version: 20180430191220) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -22,11 +22,26 @@ ActiveRecord::Schema.define(version: 20180406155808) do
     t.string "links"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "integritous"
   end
 
   create_table "categories", force: :cascade do |t|
     t.string "title"
     t.string "articles"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "reference_instances", force: :cascade do |t|
+    t.string "revid"
+    t.string "reftype"
+    t.string "wikitext"
+    t.integer "size"
+    t.integer "position"
+    t.string "refname"
+    t.string "content"
+    t.string "comments"
+    t.string "factoid"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
   end
@@ -44,6 +59,8 @@ ActiveRecord::Schema.define(version: 20180406155808) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "parsetree"
+    t.string "wikitext"
+    t.boolean "scraped"
   end
 
 end

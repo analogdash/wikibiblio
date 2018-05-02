@@ -54,6 +54,41 @@ class Article < ApplicationRecord
         end
     end
     
+    def populate_revwikitxt!
+        uristring =
+            "https://en.wikipedia.org/w/api.php?" +
+            "action=query" + "&" +
+            "format=json" + "&" +
+            "prop=revisions" + "&" +
+            "rvlimit=max" + "&" +
+            "rvprop=ids|content" + "&" +
+            "pageids=#{self.pageid.to_s}"
+        uri = URI(uristring)
+        wikiapidata = Net::HTTP.get_response(uri)
+        wikijsondata = JSON.parse(wikiapidata.body)
+        wikijsondata["query"]["pages"][self.pageid.to_s]["revisions"].each do |revision|
+            r = Revision.where(revid: revision["revid"]).take
+            if r
+                r.update(wikitext: revision["*"])
+            end
+        end
+        
+        while ! wikijsondata.keys.include?("batchcomplete") do
+            conti = wikijsondata["continue"]["continue"]
+            rvconti = wikijsondata["continue"]["rvcontinue"]
+            uristring2 = uristring + "&continue=" + conti + "&rvcontinue=" + rvconti
+            uri = URI(uristring2)
+            wikiapidata = Net::HTTP.get_response(uri)
+            wikijsondata = JSON.parse(wikiapidata.body)
+            wikijsondata["query"]["pages"][self.pageid.to_s]["revisions"].each do |revision|
+                r = Revision.where(revid: revision["revid"]).take
+                if r
+                    r.update(wikitext: revision["*"])
+                end
+            end
+        end
+    end
+    
     def populate_revs!
         uristring =
             "https://en.wikipedia.org/w/api.php?" +
@@ -61,7 +96,7 @@ class Article < ApplicationRecord
             "format=json" + "&" +
             "prop=revisions" + "&" +
             "rvlimit=max" + "&" +
-            "rvprop=ids|timestamp|user|userid|comment|size" + "&" +
+            "rvprop=ids|timestamp|user|userid|comment|size|content" + "&" +
             "pageids=#{self.pageid.to_s}"
         uri = URI(uristring)
         wikiapidata = Net::HTTP.get_response(uri)
@@ -78,6 +113,7 @@ class Article < ApplicationRecord
                 rev.userid = revision["userid"]
                 rev.size = revision["size"]
                 rev.timestamp = DateTime.parse(revision["timestamp"])
+                rev.wikitext = revision["*"]
                 rev.save
             #else
             #    breakme = true
@@ -104,6 +140,7 @@ class Article < ApplicationRecord
                         rev.userid = revision["userid"]
                         rev.size = revision["size"]
                         rev.timestamp = DateTime.parse(revision["timestamp"])
+                        rev.wikitext = revision["*"]
                         rev.save
                     #else
                     #    breakme = true
@@ -115,7 +152,34 @@ class Article < ApplicationRecord
                 #end
             end
         #end    
-    end   
+    end
+    
+    
+    def integritous?
+        revis = Revision.where(pageid: self.pageid).order("timestamp")
+        r = revis.first
+        expected = revis.count
+        sum = 1
+        while true
+            if r1 = revis.where(parentid: r.revid).take
+                if r.revid >= r1.revid
+                    puts r.revid.to_s + " vs " + r1.revid.to_s + " and " + sum.to_s + " out of " + expected.to_s
+                    break
+                end
+                sum += 1
+                r = r1
+                puts r.revid.to_s + " and " + sum.to_s + " out of " + expected.to_s
+            else
+                puts "OH NO"
+                break
+            end
+        end
+        if sum == revis.count
+            return true
+        else
+            return false
+        end
+    end
 end
 
 # first scrape 1

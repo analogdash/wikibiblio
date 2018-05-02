@@ -31,11 +31,44 @@ Article.find_each(batch_size: 1) do |a|
     a.populate_revs!
 end
 
-Revision.where(content: nil).find_each(batch_size: 100) do |a|
+Revision.where(content: nil).find_each(batch_size: 10) do |a|
     t1 = Time.now
     a.scrape_content!
     print "\n" + (Time.now - t1).to_s + "\n"
 end
+
+Article.find_each(batch_size: 1) do |a|
+    a.populate_revwikitxt!
+end
+
+Revision.where.not(content: "").find_each(batch_size: 100) do |a|
+    a.parsetree = eval(a.parsetree)["*"]
+    a.content = eval(a.content)["*"]
+    a.save
+end
+
+Revision.where.not(updated_at: (Time.now - 24.hours)..Time.now).where.not(content: "").find_each(batch_size: 100) do |a|
+    a.parsetree = eval(a.parsetree)["*"]
+    a.content = eval(a.content)["*"]
+    a.save
+end
+
+Revision.find_each(batch_size: 100) do |a|
+    a.extract_refs!
+end
+
+Article.where(integritous: nil).order("title").find_each(batch_size: 1) do |a|
+    puts a.title
+    if a.integritous?
+        a.integritous = true
+    else
+        a.integritous = false
+        puts "OH NO " + a.title
+    end
+    a.save
+end
+
+
 
 =begin
 Ferdinand_Marcos
